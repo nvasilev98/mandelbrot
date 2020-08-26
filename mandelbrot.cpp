@@ -1,19 +1,19 @@
-//*****************************************************
-// Compute mandelbrot set images
-//
-// Author: Levi Pomeroy
-//*****************************************************
 
+#include <iostream>
 #include <complex>
 #include <stdio.h>      // BMP output uses C IO not C++
 #include <unistd.h>     // for getopt
-
+#include <pthread.h>
 #include "bmp.h"        // class for creating BMP files
+#include <cmath>
+#include <chrono>
+#define E 2.71828182845904523536
 
 using std::complex;
 
 typedef struct
 {
+
     pthread_t id;
     int max_iters;
     int end_col;
@@ -49,10 +49,10 @@ int ComputeMandelbrot(long double x, long double y, int max_iters)
 {
     complex<long double> c(x,y), z(0,0);
 
-    for (int ii=0; ii<max_iters; ii++)
+    for (int ii=0; ii<max_iters; ++ii)
     {
-        z = z*z + c;
-        if (std::abs(z) >= 2.0) return ii+1;
+		z = pow(z, 2)*pow(pow(E,z),2) + c;
+        if (std::abs(z) >= 2.0) return max_iters - ii - 1;
     }
 
     return 0;
@@ -123,12 +123,12 @@ static const char *HELP_STRING =
 "   -h print this help string\n"
 "   -x <value> the starting x value. Defaults to -2\n"
 "   -X <value> the ending x value. Defaults to +2\n"
-"   -y <value> the starting y value. Defaults to -2\n"
-"   -Y <value> the ending y value. Defaults to +2\n"
-"   -r <value> the number of rows in the resulting image. Default 256.\n"
-"   -c <value> the number of cols in the resulting image. Default 256.\n"
-"   -m <value> the max number of iterations. Default is 1024.\n"
-"   -n <value> the number of threads to use. Default is 1.\n"
+"   -y <value> the starting y value. Defaults to -1\n"
+"   -Y <value> the ending y value. Defaults to +1\n"
+"   -r <value> the number of rows in the resulting image. Default 480.\n"
+"   -c <value> the number of cols in the resulting image. Default 640.\n"
+"   -m <value> the max number of iterations. Default is 100.\n"
+"   -t <value> the number of threads to use. Default is 1.\n"
 "";
 
 //*************************************************
@@ -138,15 +138,18 @@ static const char *HELP_STRING =
 //     -X <value> the ending x value. Defaults to +2
 //     -y <value> the starting y value. Defaults to -2
 //     -Y <value> the ending y value. Defaults to +2
-//     -r <value> the number of rows in the resulting image. Default 256.
-//     -c <value> the number of cols in the resulting image. Default 256.
-//     -m <value> the max number of iterations. Default is 1024.
-//     -n <value> the number of threads to use. Default is 1.
+//     -r <value> the number of rows in the resulting image. Default 480.
+//     -c <value> the number of cols in the resulting image. Default 640.
+//     -m <value> the max number of iterations. Default is 100.
+//     -t <value> the number of threads to use. Default is 1.
 int main(int argc, char** argv)
 {
-    int max_iters = 1024;
-    int rows = 256;
-    int cols = 256;
+	using namespace std::chrono;
+
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+    int max_iters = 256;
+    int rows = 480;
+    int cols = 640;
     long double start_x = -2.0;
     long double end_x = 2.0;
     long double start_y = -2.0;
@@ -158,7 +161,7 @@ int main(int argc, char** argv)
     int opt;
 
     // get command line args
-    while ((opt = getopt(argc, argv, "hx:X:y:Y:r:c:m:n:")) >= 0)
+    while ((opt = getopt(argc, argv, "hx:X:y:Y:r:c:m:t:")) >= 0)
     {
         switch (opt)
         {
@@ -183,7 +186,7 @@ int main(int argc, char** argv)
             case 'm':
                 max_iters = atoi(optarg);
                 break;
-            case 'n':
+            case 't':
                 num_threads = atoi(optarg);
                 break;
             case 'h':
@@ -235,13 +238,16 @@ int main(int argc, char** argv)
     image.Set_Pallet(pallet);
 
     // create and write the output
-    FILE *output = fopen("image.bmp", "wb");
+    FILE *output = fopen("zad20.bmp", "wb");
 
     image.Write_File(output);
 
     fclose(output);
 
-    printf("File was written\n");
+    printf("Image was created\n");
+	high_resolution_clock::time_point t2 = high_resolution_clock::now();
+	duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+	std::cout << "It took me " << time_span.count() << " seconds.";
 
     return 0;
 }
